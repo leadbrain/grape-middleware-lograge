@@ -16,6 +16,7 @@ class Grape::Middleware::Lograge < Grape::Middleware::Globals
   def initialize(_, options = {})
     super
     @options[:filter] ||= self.class.filter
+    @options[:payload_setter] ||=nil
   end
 
   def before
@@ -67,6 +68,9 @@ class Grape::Middleware::Lograge < Grape::Middleware::Globals
     payload[:format]     = env['api.format']
     payload[:version]    = env['api.version']
     payload[:db_runtime] = @db_duration
+    if  @env.present? && @env['api.endpoint']&.respond_to?(:append_info_to_payload)
+      @env['api.endpoint'].append_info_to_payload(payload)
+    end
   end
 
   def after_exception(payload, e)
@@ -77,6 +81,9 @@ class Grape::Middleware::Lograge < Grape::Middleware::Globals
 
     payload[:exception] = [class_name, e.message]
     payload[:backtrace] = e.backtrace
+    if @env.present? && @env['api.endpoint']&.respond_to?(:append_info_to_payload)
+      @env['api.endpoint'].append_info_to_payload(payload)
+    end
 
     unless ActionDispatch::ExceptionWrapper.rescue_responses[class_name].present?
       ActionDispatch::ExceptionWrapper.rescue_responses[class_name] = STATUS_CODE_TO_SYMBOL[status]
